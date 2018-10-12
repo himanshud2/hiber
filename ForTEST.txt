@@ -1,0 +1,464 @@
+#SessionProvider
+===============================
+	static Session session=null;
+	public static Session getSession(){
+			Configuration configuration=new AnnotationConfiguration();
+			SessionFactory sessionFactory=configuration.configure().buildSessionFactory();
+			session=sessionFactory.openSession();
+		return session;
+		
+#ConnectionProvider
+===============================
+
+public class ConnectorJDBC {
+
+	static Connection connection;
+	public static Connection getConnecion(){
+		try{
+			Class.forName("oracle.jdbc.OracleDriver");
+			connection=DriverManager.getConnection("jdbc:oracle:thin:@localhost:1521:xe","hr","hr");
+		}
+		catch(ClassNotFoundException|SQLException e){
+			e.printStackTrace();
+		}
+		return connection;
+	}
+}
+
+		
+#Controller
+================================
+@Path("user")
+public class RestController {
+
+	ManageUserImpl manageUserImpl=new ManageUserImpl();
+	
+	@Path("add")
+	@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.TEXT_PLAIN)
+	public String addUser(User user){
+		return manageUserImpl.addUser(user);
+	}
+	
+	@Path("getUsers")
+	@Produces(MediaType.APPLICATION_JSON)
+	@GET
+	public List<User> getUsers(){
+		return manageUserImpl.getUsers();
+	}
+	
+	@Path("getUserById/{id}")
+	@Produces(MediaType.APPLICATION_JSON)
+	@GET
+	public User getUserById(@PathParam("id")String id){
+		return manageUserImpl.getUserById(id);
+	}
+	
+	@Path("updateUser")
+	@PUT
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.TEXT_PLAIN)
+	public String updateUser(User user){
+		return manageUserImpl.updateUser(user);
+	}
+	
+	@Path("getUserByAge/{minAge}/{maxAge}")
+	@Produces(MediaType.APPLICATION_JSON)
+	@GET
+	public List<User> getUserByAge(@PathParam("minAge")int minAge,@PathParam("maxAge")int maxAge){
+		return manageUserImpl.getUserByAge(minAge, maxAge);
+	}
+	
+	@Path("deleteUserById/{id}")
+	@Produces(MediaType.TEXT_PLAIN)
+	@DELETE
+	public String deleteUser(@PathParam("id")String id){
+		return manageUserImpl.deleteUser(id);
+	}	
+}
+
+#RestImplementations
+=========================
+
+public class ManageUserImpl implements ManageUser{
+
+	@Override
+	public String addUser(User user) {
+		// TODO Auto-generated method stub
+		String message=null;
+		Connection connection=ConnectorJDBC.getConnecion();
+		try{
+			String query="insert into user_tab values(?,?,?,?)";
+			PreparedStatement preparedStatement=connection.prepareStatement(query);
+			preparedStatement.setString(1, user.getId());
+			preparedStatement.setInt(3, user.getAge());
+			preparedStatement.setString(2, user.getName());
+			preparedStatement.setString(4, user.getAddress());
+			int result=preparedStatement.executeUpdate();
+			if(result>0)
+				message="Record Added";
+			else
+				message="Record Not Added";
+		}
+		catch(SQLException e){
+			e.printStackTrace();
+		}
+		return message;
+		
+	}
+
+	@Override
+	public List<User> getUsers() {
+		// TODO Auto-generated method stub
+		List<User> users=new ArrayList<User>();
+		Connection connection=ConnectorJDBC.getConnecion();
+		try{
+			String query="Select * from User_tab";
+			Statement statement=connection.createStatement();
+			ResultSet resultSet=statement.executeQuery(query);
+			while(resultSet.next()){
+				users.add(new User(resultSet.getString(1), resultSet.getString(2), resultSet.getInt(3), resultSet.getString(4)));
+			}
+		}
+		catch(SQLException e){
+			e.printStackTrace();
+		}
+		return users;
+	}
+
+	@Override
+	public User getUserById(String id) {
+		// TODO Auto-generated method stub
+		User user=new User();
+		Connection connection=ConnectorJDBC.getConnecion();
+		try{
+			String query="Select * from User_tab where user_id=?";
+			PreparedStatement preparedStatement=connection.prepareStatement(query);
+			preparedStatement.setString(1, id);
+			ResultSet resultSet=preparedStatement.executeQuery();
+			while(resultSet.next()){
+				user=new User(resultSet.getString(1), resultSet.getString(2), resultSet.getInt(3), resultSet.getString(4));
+			}
+		}
+		catch(SQLException e){
+			e.printStackTrace();
+		}
+		return user;
+	}
+
+	@Override
+	public String updateUser(User user) {
+		// TODO Auto-generated method stub
+		String message=null;
+		Connection connection=ConnectorJDBC.getConnecion();
+		try{
+			String query="Update user_tab set name=?,age=?,address=? where user_id=?";
+			PreparedStatement preparedStatement=connection.prepareStatement(query);
+			preparedStatement.setString(4, user.getId());
+			preparedStatement.setInt(2, user.getAge());
+			preparedStatement.setString(1, user.getName());
+			preparedStatement.setString(3, user.getAddress());
+			int result=preparedStatement.executeUpdate();
+			if(result>0)
+				message="Record Updated";
+			else
+				message="Record Not Updated";
+		}
+		catch(SQLException e){
+			e.printStackTrace();
+		}
+		return message;
+	}
+
+	@Override
+	public List<User> getUserByAge(int minAge, int maxAge) {
+		// TODO Auto-generated method stub
+		List<User> users=new ArrayList<User>();
+		Connection connection=ConnectorJDBC.getConnecion();
+		try{
+			String query="Select * from User_tab where age between ? and ?";
+			PreparedStatement preparedStatement=connection.prepareStatement(query);
+			preparedStatement.setInt(1, minAge);
+			preparedStatement.setInt(2, maxAge);
+			ResultSet resultSet=preparedStatement.executeQuery();
+			while(resultSet.next()){
+				users.add(new User(resultSet.getString(1), resultSet.getString(2), resultSet.getInt(3), resultSet.getString(4)));
+			}
+		}
+		catch(SQLException e){
+			e.printStackTrace();
+		}
+		return users;
+	}
+
+	@Override
+	public String deleteUser(String id) {
+		// TODO Auto-generated method stub
+		String message=null;
+		Connection connection=ConnectorJDBC.getConnecion();
+		try{
+			String query="delete from user_tab where user_id=?";
+			PreparedStatement preparedStatement=connection.prepareStatement(query);
+			preparedStatement.setString(1, id);
+			int result=preparedStatement.executeUpdate();
+			if(result>0)
+				message="Record Deleted";
+			else
+				message="Record Not Deleted";
+		}
+		catch(SQLException e){
+			e.printStackTrace();
+		}
+		return message;
+	}
+
+======================
+#Hibernate
+=====================
+
+public void insert(){
+		Session session=SessionProvider.getSession();
+		List<Player>players1 =new ArrayList<>();
+		players1.add(new Player("P101", "Kohli", new Address("New Delhi", "India")));
+		players1.add(new Player("P102", "Sachin", new Address("Mumbai", "India")));
+		
+		List<Player>players2 =new ArrayList<>();
+		players2.add(new Player("P103", "Kohli", new Address("New Delhi", "India")));
+		players2.add(new Player("P104", "Sachin", new Address("Mumbai", "India")));
+		Transaction transaction=session.beginTransaction();
+		Match match=new Match("M101", "Green Park", new Team("T101", "India", "Manager1", new Address("Kanpur", "India"), players1), new Team("T102", "West Indies", "Manager2", new Address("XYZ", "West Indies"), players2));
+		session.save(match);
+		transaction.commit();
+	}
+	
+	public void display(){
+		Session session=SessionProvider.getSession();
+		List<Match> matches=session.createQuery("from Match").list();
+		for (Match match : matches) {
+			System.out.println(match.getMatchId());
+			System.out.println(match.getLocation());
+			System.out.println("Team-1");
+			System.out.println("-----------");
+			System.out.println(match.getTeam1().getTeamId());
+			System.out.println(match.getTeam1().getTeamName());
+			System.out.println(match.getTeam1().getManager());
+			System.out.println(match.getTeam1().getOfficeAddress());
+			System.out.println(match.getTeam1().getPlayers());
+			System.out.println("Team-2");
+			System.out.println("-----------");
+			System.out.println(match.getTeam2().getTeamId());
+			System.out.println(match.getTeam2().getTeamName());
+			System.out.println(match.getTeam2().getManager());
+			System.out.println(match.getTeam2().getOfficeAddress());
+			System.out.println(match.getTeam2().getPlayers());
+		}
+		System.out.println("-----------------------------");
+		System.out.println(matches);
+	}
+	
+	public void updateManager(){
+		Session session=SessionProvider.getSession();
+		Transaction transaction=session.beginTransaction();
+		Query query=session.getNamedQuery("updateManagerById");
+		query.setString(0, "Mike");
+		query.setString(1, "T101");
+		int result=query.executeUpdate();
+		if(result>0)
+			System.out.println("--------->Manager Updated");
+		else
+			System.out.println("--------->Manager Not Updated");
+		transaction.commit();
+	}
+	
+	public void updatePlayerAddress(){
+		Session session=SessionProvider.getSession();
+		Transaction transaction=session.beginTransaction();
+		Query query=session.createQuery("from Player where playerid=?");
+		query.setString(0, "P101");
+		List<Player> players=query.list();
+		for (Player player : players) {
+			player.setAddress(new Address("New York", "US"));
+			session.update(player);
+		}
+		transaction.commit();
+	}
+	
+	public void changeTeam(){
+		Session session=SessionProvider.getSession();
+		Transaction transaction=session.beginTransaction();
+		Query query=session.createQuery("from Match where matchId=?");
+		query.setString(0, "M101");
+		List<Match> matches=query.list();
+		for (Match match : matches) {
+			List<Player> players=new ArrayList<>();
+			players.add(new Player("P105", "Andrew", new Address("Sydney", "Australia")));
+			match.setTeam1(new Team("T103", "Australia", "Manager3", new Address("Canberra", "Australia"), players));
+			session.update(match);
+		}
+		transaction.commit();
+	}
+	
+	public void displayTeamAddress(){
+		Session session=SessionProvider.getSession();
+		Query query=session.createQuery("from Team where teamId=?");
+		query.setString(0, "T101");
+		List<Team> teams=query.list();
+		for (Team team : teams) {
+			System.out.println(team.getOfficeAddress());
+		}
+	}
+	
+	public void displayAddressOfPlayer(){
+		Session session=SessionProvider.getSession();
+		Criteria criteria=session.createCriteria(Player.class);
+		criteria.add(Restrictions.eq("playerId", "P101"));
+		List<Player> players=criteria.list();
+		for (Player player : players) {
+			System.out.println(player.getAddress());
+		}
+	}
+	
+	public void getPlayerByMatchByTeam(){
+		Session session=SessionProvider.getSession();
+		Criteria criteria=session.createCriteria(Match.class);
+		criteria.add(Restrictions.eq("matchId", "M101"));
+		List<Match> matches=criteria.list();
+		if(matches.get(0).getTeam1().getTeamId().equals("T102")){
+			System.out.println(matches.get(0).getTeam1().getPlayers());
+		}
+		else if(matches.get(0).getTeam2().getTeamId().equals("T102")){
+			System.out.println(matches.get(0).getTeam2().getPlayers());
+		}
+	}
+	
+#Form
+==========================
+
+<B>Rest Web  Service is deployed successfully </B>
+<form action="rest/project-services/insert" method="post">
+id <input type="text" name="projectId"><br>
+name<input type="text" name="projectName"><br>
+duration<input type="text" name="duration"><br>
+<input type="submit">
+</form>
+
+#FormGet
+==========================
+	@POST
+	@Path("insert")
+	@Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+	public void addProject(@FormParam("projectId") String pId,@FormParam("projectName") String pName,@FormParam("duration")  int time){
+		Project project=new Project(pId, pName, time);
+		projectList.add(project);
+		System.out.println("Total Number of project"+projectList.size());
+		System.out.println("resource added successfully");
+		}
+	}
+	
+==============================
+#FileHandling
+==============================
+package p1;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+
+public class StoringAFile {
+
+	public static void main(String[] args) {
+		try
+		{
+			//new StoringAFile().createFile();
+			new StoringAFile().readFile();
+			
+			
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public void createFile()throws Exception
+	{
+		File f = new File("MyNewFile.txt");
+		FileWriter fw = new FileWriter(f,true);
+		PrintWriter pw = new PrintWriter(fw);
+		pw.write("Employee ID  "+101);
+		pw.close();
+		System.out.println("Done");
+	}
+	
+	public void readFile()throws Exception
+	{
+		File f = new File("C:\\Users\\ashish.bansal\\Desktop\\BCT July 2018 Classroom\\Date.java");
+		FileReader fr = new FileReader(f);
+		BufferedReader br = new BufferedReader(fr);
+		
+		String line = "";
+		int i = 0;
+		while((line = br.readLine())!=null)
+		{
+			System.out.println((++i)+""+line);
+		}
+		
+	}
+	
+}
+
+
+==================================
+#web.xml
+==================================
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" id="WebApp_ID" version="2.5">
+  <display-name>projectservices</display-name>
+  <welcome-file-list>    
+    <welcome-file>index.jsp</welcome-file>   
+  </welcome-file-list>
+  
+  <servlet>
+    <servlet-name>JerseyServlet</servlet-name>
+    <servlet-class>com.sun.jersey.spi.container.servlet.ServletContainer</servlet-class>
+    <init-param>
+      <param-name>com.sun.jersey.config.property.packages</param-name>
+      <param-value>com.infy</param-value>
+    </init-param>
+    <load-on-startup>1</load-on-startup>
+  </servlet>
+  
+  <servlet-mapping>
+  	<servlet-name>JerseyServlet</servlet-name>
+  	<url-pattern>/rest/*</url-pattern>
+  </servlet-mapping>
+  
+  </web-app>
+
+=================================
+#hibernate.cfg.xml
+=================================
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC "-//Hibernate/Hibernate Configuration DTD//EN"
+                                         "http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+	 <session-factory name="">
+		  <property name="hibernate.connection.driver_class">oracle.jdbc.driver.OracleDriver</property>
+		  <property name="hibernate.connection.url">jdbc:oracle:thin:@127.0.0.1:1521:XE</property>
+		  <property name="hibernate.connection.username">hr</property>
+		  <property name="hibernate.connection.password">hr</property>
+		  <property name="show_sql">true</property>
+		  <property name="dialect">org.hibernate.dialect.OracleDialect</property>
+		  <property name="hibernate.hbm2ddl.auto">update</property>
+		  <mapping class="p1.Match"/>
+		  <mapping class="p1.Team"/>
+		  <mapping class="p1.Player"/>
+	 </session-factory>
+</hibernate-configuration>
+
+===================================
+
